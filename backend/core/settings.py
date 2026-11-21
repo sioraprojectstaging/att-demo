@@ -17,8 +17,9 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Only backend/.env is loaded. Never put production credentials there: the
+# local dev server would then read and write the live database.
 load_dotenv(BASE_DIR / '.env')
-load_dotenv(BASE_DIR / '.env.local')  # written by `vercel env pull`
 
 
 def env_bool(name, default=False):

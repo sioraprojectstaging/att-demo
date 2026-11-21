@@ -9,6 +9,11 @@ import io
 # Configure logger for this module
 logger = logging.getLogger(__name__)
 
+# scikit-image (imported by insightface) needs its .pyi stubs, which Vercel's
+# bundler drops; install the fallback before anything imports it.
+from core import lazy_stub_fallback
+lazy_stub_fallback.install()
+
 # Lazy import to allow migrations to run without insightface installed
 FaceAnalysis = None
 

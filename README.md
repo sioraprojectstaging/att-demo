@@ -80,9 +80,11 @@ Two Vercel projects deploy from this one repo.
   ```bash
   cd backend
   vercel link --project siora-one-api
-  vercel env pull .env.local     # DATABASE_URL etc.; .env.local is gitignored
-  python manage.py migrate
-  python manage.py create_superadmin --email you@example.com --password '...'
+  vercel env pull /tmp/siora-prod.env --environment production
+  # Run only the migration against production; don't leave DATABASE_URL in backend/.env
+  DATABASE_URL="$(grep '^DATABASE_URL_UNPOOLED=' /tmp/siora-prod.env | cut -d= -f2- | tr -d '"')" \
+    python manage.py migrate
+  rm /tmp/siora-prod.env
   ```
 - Static files (Django admin CSS) are collected and served by Vercel automatically.
 
