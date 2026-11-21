@@ -1,0 +1,33 @@
+# Siora One backend
+# Used both locally (pip install -r requirements.txt) and by Vercel's Python build.
+
+# Django + API
+Django==5.2.9
+djangorestframework==3.16.1
+djangorestframework_simplejwt==5.5.1
+django-cors-headers==4.9.0
+drf-spectacular==0.29.0
+PyJWT==2.10.1
+
+# Config + database
+python-dotenv==1.2.1
+dj-database-url==3.0.1
+psycopg2-binary==2.9.11
+
+# HTTP (Vercel Blob storage, face model download)
+requests==2.34.2
+
+
+# Face recognition
+insightface==0.7.3
+opencv-python-headless==4.12.0.88
+onnxruntime==1.23.2
+onnx==1.20.0
+
+# Data processing
+numpy==2.2.6
+scikit-learn==1.7.2
+scikit-image==0.25.2
+
+# Images
+Pillow==10.4.0
