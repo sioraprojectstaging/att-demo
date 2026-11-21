@@ -6,6 +6,8 @@ import api from '../services/api';
 
 const SignUp = () => {
     const [formData, setFormData] = useState({
+        firstName: '',
+        lastName: '',
         username: '',
         email: '',
         password: '',
@@ -69,6 +71,19 @@ const SignUp = () => {
             validationErrors.push('Please enter a valid email address');
         }
 
+        // Validate first name (mirrors backend UserSerializer rules)
+        const nameRegex = /^[a-zA-Z\s\-']+$/;
+        const firstName = formData.firstName.trim();
+        if (firstName.length < 2 || firstName.length > 50) {
+            validationErrors.push('First name must be between 2 and 50 characters');
+        } else if (!nameRegex.test(firstName)) {
+            validationErrors.push('First name can only contain letters, spaces, hyphens, or apostrophes');
+        }
+        const lastName = formData.lastName.trim();
+        if (lastName && !nameRegex.test(lastName)) {
+            validationErrors.push('Last name can only contain letters, spaces, hyphens, or apostrophes');
+        }
+
         // Validate username
         if (formData.username.length < 3) {
             validationErrors.push('Username must be at least 3 characters');
@@ -83,6 +98,8 @@ const SignUp = () => {
         setLoading(true);
         try {
             const response = await register({
+                first_name: formData.firstName.trim(),
+                last_name: formData.lastName.trim(),
                 username: formData.username,
                 email: formData.email,
                 password: formData.password,
@@ -101,17 +118,21 @@ const SignUp = () => {
 
             if (errorData) {
                 // Handle field-specific errors (arrays of messages)
-                if (errorData.username) {
-                    errors.push(`Username: ${Array.isArray(errorData.username) ? errorData.username.join(', ') : errorData.username}`);
-                }
-                if (errorData.email) {
-                    errors.push(`Email: ${Array.isArray(errorData.email) ? errorData.email.join(', ') : errorData.email}`);
-                }
-                if (errorData.password) {
-                    errors.push(`Password: ${Array.isArray(errorData.password) ? errorData.password.join(', ') : errorData.password}`);
-                }
-                if (errorData.location) {
-                    errors.push(`Location: ${Array.isArray(errorData.location) ? errorData.location.join(', ') : errorData.location}`);
+                const fieldLabels = {
+                    first_name: 'First name',
+                    last_name: 'Last name',
+                    username: 'Username',
+                    email: 'Email',
+                    password: 'Password',
+                    location: 'Location',
+                };
+                Object.entries(errorData).forEach(([field, msg]) => {
+                    if (field === 'error' || field === 'non_field_errors' || field === 'detail') return;
+                    const label = fieldLabels[field] || field;
+                    errors.push(`${label}: ${Array.isArray(msg) ? msg.join(', ') : msg}`);
+                });
+                if (errorData.detail) {
+                    errors.push(errorData.detail);
                 }
                 // Handle general error message
                 if (errorData.error) {
@@ -170,6 +191,34 @@ const SignUp = () => {
 
                     {!success && (
                         <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-600 mb-2">First Name</label>
+                                    <input
+                                        type="text"
+                                        name="firstName"
+                                        value={formData.firstName}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#E85D4E]/20 focus:border-[#E85D4E] transition-all"
+                                        placeholder="First name"
+                                        autoComplete="given-name"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-600 mb-2">Last Name <span className="text-gray-400 font-normal">(optional)</span></label>
+                                    <input
+                                        type="text"
+                                        name="lastName"
+                                        value={formData.lastName}
+                                        onChange={handleChange}
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#E85D4E]/20 focus:border-[#E85D4E] transition-all"
+                                        placeholder="Last name"
+                                        autoComplete="family-name"
+                                    />
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-600 mb-2">Username</label>
                                 <div className="relative">
