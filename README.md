@@ -5,8 +5,8 @@ One Django REST API serves both the **web app** (React) and the **mobile app**.
 
 | Part | Folder | Hosted on | Vercel project |
 |------|--------|-----------|----------------|
-| Web app (admin dashboard) | `client/` | Vercel (static) | `siora-one` |
-| API + Django admin | `backend/` | Vercel (Python function) | `siora-one-api` |
+| Web app (admin dashboard) | `client/` | Vercel (static), https://siora-one-ten.vercel.app | `siora-one` |
+| API + Django admin | `backend/` | Vercel (Python function, `sin1`), https://siora-one-api.vercel.app | `siora-one-api` |
 | Database | — | Neon Postgres (Vercel Marketplace) | connected to `siora-one-api` |
 | Uploaded files (profile photos) | — | Vercel Blob | connected to `siora-one-api` |
 
@@ -62,14 +62,14 @@ Two Vercel projects deploy from this one repo.
 
 ### 1. API: `siora-one-api`
 
-- **Root Directory:** `backend`. Vercel detects Django from `manage.py` and serves `core.wsgi.application`.
+- **Root Directory:** `backend`. `backend/vercel.json` sets the Django framework preset (required: without it the build silently deploys nothing) and the `sin1` region next to the Neon database.
 - **Storage:** connect a **Neon** database (sets `DATABASE_URL`) and a **public Blob** store (sets `BLOB_READ_WRITE_TOKEN`).
 - **Environment variables:**
 
   | Name | Value |
   |------|-------|
   | `SECRET_KEY` | long random string (required; also needed at build time) |
-  | `FRONTEND_URL` | `https://siora-one.vercel.app` |
+  | `FRONTEND_URL` | `https://siora-one-ten.vercel.app` |
   | `FACE_MODEL_BASE_URL` | public folder URL holding `det_10g.onnx` and `w600k_r50.onnx` (see below) |
   | `VERCEL_SUPPORT_LARGE_FUNCTIONS` | `1` (the face-recognition libraries exceed the 500 MB standard limit) |
   | `CORS_ALLOWED_ORIGIN_REGEXES` | optional, e.g. `^https://siora-one-[a-z0-9-]+\.vercel\.app$` for preview URLs |
