@@ -46,7 +46,12 @@ def get_request_metadata(request):
 # ==========================
 # CONFIG
 # ==========================
-REGISTRATION_DUPLICATE_THRESHOLD = 0.50  # Lowered to catch face variations with turbans/glasses/angles
+# buffalo_l (ArcFace) scores: same person ~0.6+, different people usually < 0.3,
+# but poor lighting / distance can push different people to ~0.5 (e.g. 0.5137
+# seen for two different workers). Block only clear duplicates; flag the grey
+# zone for admin review instead of rejecting it.
+REGISTRATION_DUPLICATE_THRESHOLD = 0.60
+REGISTRATION_REVIEW_THRESHOLD = 0.40
 ATTENDANCE_MATCH_THRESHOLD = 0.5
 
 
@@ -62,7 +67,13 @@ def normalize(vec):
 
 
 def cosine_similarity(v1, v2):
-    """Cosine similarity for normalized vectors"""
+    """Cosine similarity for normalized vectors.
+
+    Vectors of different lengths come from different models and cannot be
+    compared (zip would silently truncate), so they score 0.
+    """
+    if len(v1) != len(v2):
+        return 0.0
     return sum(a * b for a, b in zip(v1, v2))
 
 
@@ -801,41 +812,43 @@ def register_employee(request):
                 if similarity > best_match_similarity:
                     best_match_similarity = similarity
                     best_match_user = user
-
-                if similarity > REGISTRATION_DUPLICATE_THRESHOLD:
-                    existing_location = user.location.name if user.location else 'Unknown'
-                    logger.warning(f"DUPLICATE DETECTED! {user.contact} at {existing_location} with similarity={similarity:.4f}")
-                    ActivityLog.log_activity(
-                        action='REGISTER',
-                        status='FAILED',
-                        message=f"Duplicate face detected - matches {user.contact} at {existing_location}",
-                        contact_attempted=contact,
-                        name_attempted=name,
-                        location=location,
-                        activity_data={
-                            'matched_user_id': user.id,
-                            'matched_contact': user.contact,
-                            'matched_location': existing_location,
-                            'similarity': round(similarity, 4),
-                            'threshold': REGISTRATION_DUPLICATE_THRESHOLD
-                        },
-                        ip_address=ip_address,
-                        user_agent=user_agent
-                    )
-                    return error_response(
-                        f"This face is already registered at {existing_location}. Contact admin if this is an error.",
-                        status_code=status.HTTP_409_CONFLICT
-                    )
             except (json.JSONDecodeError, TypeError) as e:
                 logger.error(f"Error comparing with user {user.id}: {e}")
                 continue
-        
+
+        # Block on the CLOSEST match (not the first one over the threshold),
+        # so the error and log name the most likely duplicate.
+        if best_match_user and best_match_similarity > REGISTRATION_DUPLICATE_THRESHOLD:
+            existing_location = best_match_user.location.name if best_match_user.location else 'Unknown'
+            logger.warning(f"DUPLICATE DETECTED! {best_match_user.contact} at {existing_location} with similarity={best_match_similarity:.4f}")
+            ActivityLog.log_activity(
+                action='REGISTER',
+                status='FAILED',
+                message=f"Duplicate face detected - matches {best_match_user.contact} at {existing_location}",
+                contact_attempted=contact,
+                name_attempted=name,
+                location=location,
+                activity_data={
+                    'matched_user_id': best_match_user.id,
+                    'matched_contact': best_match_user.contact,
+                    'matched_location': existing_location,
+                    'similarity': round(best_match_similarity, 4),
+                    'threshold': REGISTRATION_DUPLICATE_THRESHOLD
+                },
+                ip_address=ip_address,
+                user_agent=user_agent
+            )
+            return error_response(
+                f"This face is already registered at {existing_location}. Contact admin if this is an error.",
+                status_code=status.HTTP_409_CONFLICT
+            )
+
         # Log the best match even if below threshold (for debugging)
         suspicious_match = None
         if best_match_user:
             logger.debug(f"Best match was {best_match_user.contact} with similarity={best_match_similarity:.4f} (threshold={REGISTRATION_DUPLICATE_THRESHOLD})")
             # Flag suspicious matches for admin review
-            if best_match_similarity >= 0.40:
+            if best_match_similarity >= REGISTRATION_REVIEW_THRESHOLD:
                 suspicious_match = {
                     "contact": best_match_user.contact,
                     "similarity": round(best_match_similarity, 4),
